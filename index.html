@@ -16,19 +16,20 @@
         }
         
         .grid-cell {
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 1.1rem; /* Ukuran huruf diperbesar kembali */
             font-weight: 700;
             text-transform: uppercase;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
             user-select: none;
             color: #374151;
             border-radius: 4px;
+            background-color: #fff;
         }
         
         .grid-cell:hover {
@@ -38,6 +39,8 @@
         .grid-cell.selected { 
             background-color: #fca5a5; 
             color: #fff; 
+            transform: scale(1.05);
+            z-index: 10;
         }
         
         .grid-cell.found { 
@@ -65,7 +68,7 @@
         select:disabled, input:disabled { background-color: #f9fafb; cursor: not-allowed; color: #9ca3af; }
 
         @media (max-width: 768px) {
-            .grid-cell { width: 18px; height: 18px; font-size: 0.6rem; }
+            .grid-cell { width: 20px; height: 20px; font-size: 0.75rem; }
             .container-wrapper { padding: 1rem; margin: 0.5rem; }
         }
     </style>
@@ -134,7 +137,7 @@
 
         <div class="flex flex-col lg:flex-row gap-8">
             <div class="flex-1 flex justify-center items-start overflow-auto">
-                <div id="grid-container" class="grid p-4 bg-white rounded-xl shadow-sm border border-gray-100 touch-none select-none" style="gap: 2px;"></div>
+                <div id="grid-container" class="grid p-4 bg-gray-100 rounded-xl shadow-inner border border-gray-200 touch-none select-none" style="gap: 2px;"></div>
             </div>
 
             <div class="w-full lg:w-72 space-y-5">
@@ -169,7 +172,6 @@
     </div>
 
     <script>
-        // Link Web App Google Apps Script terbaru Anda
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyn1xKLDE_9ICKoHt2RP6hEmfdevXyFfMupiULh9a-3oovS9dz-bRvHwF49n6ZeW-dC/exec'; 
 
         const DATA_URLS = {
@@ -179,7 +181,7 @@
         };
 
         const CONFIG = {
-            GRID_SIZE: 20, // Diperbarui menjadi 20
+            GRID_SIZE: 20,
             PICK_COUNT: 10
         };
 
@@ -214,7 +216,6 @@
                 document.getElementById('login-form').classList.remove('hidden');
             } catch (err) {
                 console.error(err);
-                alert("Gagal memuat data. Periksa koneksi internet.");
             }
         }
 
@@ -253,10 +254,6 @@
                 kodeInput.disabled = false;
                 kodeMsg.textContent = "Ketik kode akses " + kelasSelect.value;
                 kodeMsg.className = "text-xs mt-2 text-indigo-500 font-medium";
-            } else {
-                kodeInput.disabled = true;
-                kodeMsg.textContent = "Pilih kelas terlebih dahulu.";
-                kodeMsg.className = "text-xs mt-2 text-gray-400";
             }
         });
 
@@ -330,7 +327,7 @@
             game.currentWords.forEach(word => {
                 let placed = false;
                 let attempts = 0;
-                while (!placed && attempts < 500) { // Meningkatkan batas percobaan untuk grid lebih besar
+                while (!placed && attempts < 500) {
                     const dir = directions[Math.floor(Math.random() * directions.length)];
                     const r = Math.floor(Math.random() * size);
                     const c = Math.floor(Math.random() * size);
@@ -365,6 +362,7 @@
                     cell.textContent = char;
                     cell.dataset.r = r;
                     cell.dataset.c = c;
+                    
                     cell.onmousedown = (e) => { e.preventDefault(); onSelectStart(cell); };
                     cell.onmouseenter = (e) => { if(game.isMouseDown) onSelectMove(cell); };
                     cell.ontouchstart = (e) => { e.preventDefault(); onSelectStart(cell); };
@@ -467,8 +465,8 @@
 
             const payload = {
                 sheetName: "Hasil",
-                nama: namaSelect.value,
-                kelas: kelasSelect.value,
+                nama: document.getElementById('nama-select').value,
+                kelas: document.getElementById('kelas-select').value,
                 waktu: document.getElementById('timer').textContent,
                 jumlahKata: `${game.foundWords.size}/${CONFIG.PICK_COUNT}`,
                 kataDicari: game.currentWords.join(", "),
@@ -485,7 +483,6 @@
                 });
                 showFinalModal(true);
             } catch (err) {
-                console.error(err);
                 showFinalModal(false);
             } finally {
                 game.isSubmitting = false;
@@ -501,7 +498,7 @@
             
             desc.innerHTML = `
                 <div class="mb-4 font-bold text-indigo-600">${status}</div>
-                Selamat <b>${namaSelect.value}</b>, Anda berhasil menemukan <b>${game.foundWords.size}</b> kata dalam waktu <b>${document.getElementById('timer').textContent}</b>.
+                Selamat <b>${document.getElementById('nama-select').value}</b>, Anda berhasil menemukan <b>${game.foundWords.size}</b> kata dalam waktu <b>${document.getElementById('timer').textContent}</b>.
             `;
             modal.classList.remove('hidden');
         }
