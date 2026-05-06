@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Cari Kata Sejarah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-image: url('https://images.unsplash.com/photo-1615839235941-e744123579ec?q=80&w=1964&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        
+        .grid-cell {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+            user-select: none;
+            color: #374151;
+            border-radius: 4px;
+        }
+        
+        .grid-cell:hover {
+            background-color: rgba(99, 102, 241, 0.1);
+        }
+
+        .grid-cell.selected { 
+            background-color: #fca5a5; 
+            color: #fff; 
+        }
+        
+        .grid-cell.found { 
+            background-color: #4ade80; 
+            color: #fff; 
+        }
+
+        .word.found { 
+            text-decoration: line-through; 
+            color: #9ca3af; 
+            font-style: italic; 
+            background-color: #f3f4f6;
+        }
+        
+        .container-wrapper {
+            max-width: 1000px;
+            margin: 1.5rem auto;
+            padding: 2rem;
+            background-color: rgba(255, 255, 255, 0.98);
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .login-container { max-width: 450px; }
+        select:disabled, input:disabled { background-color: #f9fafb; cursor: not-allowed; color: #9ca3af; }
+
+        @media (max-width: 768px) {
+            .grid-cell { width: 22px; height: 22px; font-size: 0.75rem; }
+            .container-wrapper { padding: 1rem; margin: 0.5rem; }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-2">
+
+    <!-- Section: Login -->
+    <div id="login-section" class="container-wrapper login-container w-full">
+        <div class="text-center mb-8">
+            <div class="inline-block p-3 bg-indigo-100 rounded-full mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0012 3m0 18a10.003 10.003 0 01-12-10V7a2 2 0 012-2h2m2 4h10a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6z" />
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800">Presensi Kuis</h1>
+            <p class="text-gray-500 mt-2">Silahkan verifikasi identitas Anda</p>
+        </div>
+        
+        <div id="loading-data" class="text-center py-4 text-indigo-600 font-semibold animate-pulse">
+            <p>Sinkronisasi Database...</p>
+        </div>
+
+        <form id="login-form" class="space-y-5 hidden">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Kelas</label>
+                <select id="kelas-select" required class="mt-1 block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none">
+                    <option value="">-- Pilih Kelas --</option>
+                    <option value="X 1">Kelas X 1</option>
+                    <option value="X 2">Kelas X 2</option>
+                    <option value="X 3">Kelas X 3</option>
+                    <option value="X 4">Kelas X 4</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Kode Akses Kelas</label>
+                <input type="password" id="kode-input" disabled required placeholder="Masukkan kode akses" class="mt-1 block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none">
+                <p id="kode-msg" class="text-xs mt-2 text-gray-400 italic">Pilih kelas terlebih dahulu.</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Nama Siswa</label>
+                <select id="nama-select" disabled required class="mt-1 block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none">
+                    <option value="">Menunggu Kode Akses...</option>
+                </select>
+            </div>
+
+            <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95">Mulai Pengerjaan</button>
+        </form>
+    </div>
+
+    <!-- Section: Game -->
+    <div id="game-section" class="container-wrapper hidden w-full">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-gray-100 pb-6">
+            <div class="text-center md:text-left mb-4 md:mb-0">
+                <h2 class="text-2xl font-bold text-gray-800 tracking-tight uppercase">KUIS CARI KATA SEJARAH</h2>
+                <div class="flex items-center gap-2 mt-1 justify-center md:justify-start">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    <p class="text-sm text-gray-500"><span id="user-name" class="font-bold text-gray-700"></span> • <span id="user-class" class="text-indigo-600 font-medium"></span></p>
+                </div>
+            </div>
+            <div class="bg-indigo-50 px-6 py-2 rounded-2xl">
+                <div id="timer" class="text-3xl font-mono font-bold text-indigo-600 tracking-widest">00:00</div>
+            </div>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Grid Board -->
+            <div class="flex-1 flex justify-center items-start">
+                <div id="grid-container" class="grid p-4 bg-white rounded-xl shadow-sm border border-gray-100 touch-none select-none" style="gap: 2px;"></div>
+            </div>
+
+            <!-- Sidebar Info -->
+            <div class="w-full lg:w-72 space-y-5">
+                <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-gray-700 uppercase text-xs tracking-wider">Daftar Kata</h3>
+                        <span id="progress-text" class="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">0/10</span>
+                    </div>
+                    <ul id="word-list" class="grid grid-cols-2 lg:grid-cols-1 gap-2 text-sm"></ul>
+                </div>
+                
+                <div class="space-y-3">
+                    <button id="submit-btn" disabled class="w-full bg-green-500 text-white py-4 rounded-xl font-bold opacity-50 cursor-not-allowed hover:bg-green-600 shadow-lg shadow-green-100 transition-all flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Kirim Jawaban
+                    </button>
+                    <button id="shuffle-btn" class="w-full text-gray-400 py-2 text-xs hover:text-gray-600 transition-colors uppercase tracking-widest font-semibold">
+                        Acak Ulang Posisi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Status -->
+    <div id="modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-md hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-10 rounded-3xl max-w-sm w-full text-center shadow-2xl">
+            <div id="modal-icon" class="text-6xl mb-6">🎯</div>
+            <h3 id="modal-title" class="text-2xl font-bold text-gray-800 mb-2">Pengerjaan Selesai!</h3>
+            <p id="modal-desc" class="text-gray-500 mb-8 leading-relaxed"></p>
+            <button onclick="location.reload()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">Selesai & Keluar</button>
+        </div>
+    </div>
+
+    <script>
+        const DATA_URLS = {
+            students: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4alJN5yHJz4sXVfvkSLYKRNwk0voqmkt0pWNWC8dVM2aFG8zGa39TMU-To7V1njhtRUWsLzn_2ud0/pub?gid=1397527120&single=true&output=csv',
+            codes: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4alJN5yHJz4sXVfvkSLYKRNwk0voqmkt0pWNWC8dVM2aFG8zGa39TMU-To7V1njhtRUWsLzn_2ud0/pub?gid=1570304066&single=true&output=csv',
+            words: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4alJN5yHJz4sXVfvkSLYKRNwk0voqmkt0pWNWC8dVM2aFG8zGa39TMU-To7V1njhtRUWsLzn_2ud0/pub?gid=166449837&single=true&output=csv'
+        };
+
+        const CONFIG = {
+            GRID_SIZE: 15,
+            PICK_COUNT: 10 // Jumlah kata yang akan dipilih acak untuk tiap murid
+        };
+
+        let db = { 
+            students: {}, 
+            codes: {}, 
+            allWords: [] // Penampung semua kata dari CSV
+        };
+
+        let game = {
+            isMouseDown: false,
+            selectedCells: [],
+            foundWords: new Set(),
+            currentWords: [], // Kata yang terpilih untuk sesi ini
+            seconds: 0,
+            timer: null,
+            dragDirection: null
+        };
+
+        // --- DATA LOAD ---
+        async function loadAllData() {
+            try {
+                const [studResp, codeResp, wordResp] = await Promise.all([
+                    fetch(DATA_URLS.students).then(r => r.text()),
+                    fetch(DATA_URLS.codes).then(r => r.text()),
+                    fetch(DATA_URLS.words).then(r => r.text())
+                ]);
+                parseStudents(studResp);
+                parseCodes(codeResp);
+                parseWords(wordResp);
+                document.getElementById('loading-data').classList.add('hidden');
+                document.getElementById('login-form').classList.remove('hidden');
+            } catch (err) {
+                console.error(err);
+                alert("Kesalahan sinkronisasi data. Pastikan spreadsheet dipublikasikan ke web.");
+            }
+        }
+
+        function parseStudents(csv) {
+            const lines = csv.split('\n').map(line => line.split(','));
+            ['X 1', 'X 2', 'X 3', 'X 4'].forEach((cls, idx) => {
+                db.students[cls] = lines.slice(1).map(row => row[idx]?.trim()).filter(n => n);
+            });
+        }
+
+        function parseCodes(csv) {
+            const lines = csv.split('\n').map(line => line.split(','));
+            const codes = lines[1];
+            ['X 1', 'X 2', 'X 3', 'X 4'].forEach((cls, idx) => {
+                db.codes[cls] = codes[idx]?.trim();
+            });
+        }
+
+        function parseWords(csv) {
+            // Mengambil Kolom A (index 0) mulai baris 2
+            const lines = csv.split('\n').map(line => line.split(','));
+            db.allWords = lines.slice(1)
+                .map(row => row[0]?.trim().toUpperCase())
+                .filter(w => w && w.length > 2); // Filter kata kosong atau terlalu pendek
+        }
+
+        // --- LOGIN FLOW ---
+        const kelasSelect = document.getElementById('kelas-select');
+        const kodeInput = document.getElementById('kode-input');
+        const namaSelect = document.getElementById('nama-select');
+        const kodeMsg = document.getElementById('kode-msg');
+
+        kelasSelect.addEventListener('change', () => {
+            kodeInput.value = "";
+            namaSelect.innerHTML = '<option value="">Menunggu Kode Akses...</option>';
+            namaSelect.disabled = true;
+            if (kelasSelect.value) {
+                kodeInput.disabled = false;
+                kodeMsg.textContent = "Ketik kode akses " + kelasSelect.value;
+                kodeMsg.className = "text-xs mt-2 text-indigo-500 font-medium";
+            } else {
+                kodeInput.disabled = true;
+                kodeMsg.textContent = "Pilih kelas terlebih dahulu.";
+                kodeMsg.className = "text-xs mt-2 text-gray-400";
+            }
+        });
+
+        kodeInput.addEventListener('input', () => {
+            const selectedClass = kelasSelect.value;
+            if (kodeInput.value === db.codes[selectedClass]) {
+                kodeMsg.textContent = "✅ Akses Diberikan";
+                kodeMsg.className = "text-xs mt-2 text-green-600 font-bold";
+                namaSelect.disabled = false;
+                namaSelect.innerHTML = '<option value="">-- Cari Nama Anda --</option>';
+                db.students[selectedClass].sort().forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    namaSelect.appendChild(opt);
+                });
+            } else {
+                namaSelect.disabled = true;
+                kodeMsg.textContent = "❌ Kode Salah";
+                kodeMsg.className = "text-xs mt-2 text-red-500 font-bold";
+            }
+        });
+
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            document.getElementById('user-name').textContent = namaSelect.value;
+            document.getElementById('user-class').textContent = "Kelas " + kelasSelect.value;
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('game-section').classList.remove('hidden');
+            
+            // Pilih 10 kata acak dari database untuk murid ini
+            game.currentWords = [...db.allWords]
+                .sort(() => 0.5 - Math.random())
+                .slice(0, CONFIG.PICK_COUNT);
+
+            startGame();
+        });
+
+        // --- CORE GAME ENGINE ---
+        function startGame() {
+            game.foundWords.clear();
+            game.seconds = 0;
+            updateUI();
+            startTimer();
+            buildGrid();
+            renderWordList();
+        }
+
+        function updateUI() {
+            document.getElementById('progress-text').textContent = `${game.foundWords.size}/${CONFIG.PICK_COUNT}`;
+            const btn = document.getElementById('submit-btn');
+            if (game.foundWords.size >= 5) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function startTimer() {
+            if (game.timer) clearInterval(game.timer);
+            game.timer = setInterval(() => {
+                game.seconds++;
+                const m = Math.floor(game.seconds / 60).toString().padStart(2, '0');
+                const s = (game.seconds % 60).toString().padStart(2, '0');
+                document.getElementById('timer').textContent = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function buildGrid() {
+            const size = CONFIG.GRID_SIZE;
+            let board = Array(size).fill().map(() => Array(size).fill(''));
+            
+            const directions = [
+                [0, 1],   // Horizontal
+                [1, 0],   // Vertikal
+                [1, 1],   // Diagonal Bawah Kanan
+                [-1, 1]   // Diagonal Atas Kanan
+            ];
+
+            game.currentWords.forEach(word => {
+                let placed = false;
+                let attempts = 0;
+                while (!placed && attempts < 300) {
+                    const dir = directions[Math.floor(Math.random() * directions.length)];
+                    const r = Math.floor(Math.random() * size);
+                    const c = Math.floor(Math.random() * size);
+                    
+                    const endR = r + (word.length - 1) * dir[0];
+                    const endC = c + (word.length - 1) * dir[1];
+
+                    if (endR >= 0 && endR < size && endC >= 0 && endC < size) {
+                        let canFit = true;
+                        for (let i = 0; i < word.length; i++) {
+                            const curr = board[r + i * dir[0]][c + i * dir[1]];
+                            if (curr && curr !== word[i]) { canFit = false; break; }
+                        }
+
+                        if (canFit) {
+                            for (let i = 0; i < word.length; i++) {
+                                board[r + i * dir[0]][c + i * dir[1]] = word[i];
+                            }
+                            placed = true;
+                        }
+                    }
+                    attempts++;
+                }
+            });
+
+            const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const container = document.getElementById('grid-container');
+            container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+            container.innerHTML = '';
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const char = board[r][c] || alpha[Math.floor(Math.random() * 26)];
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.textContent = char;
+                    cell.dataset.r = r;
+                    cell.dataset.c = c;
+                    
+                    cell.onmousedown = (e) => { e.preventDefault(); onSelectStart(cell); };
+                    cell.onmouseenter = (e) => { if(game.isMouseDown) onSelectMove(cell); };
+                    
+                    cell.ontouchstart = (e) => { e.preventDefault(); onSelectStart(cell); };
+                    cell.ontouchmove = (e) => {
+                        e.preventDefault();
+                        const touch = e.touches[0];
+                        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                        if (el && el.classList.contains('grid-cell')) onSelectMove(el);
+                    };
+
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        function renderWordList() {
+            const list = document.getElementById('word-list');
+            list.innerHTML = game.currentWords.map(w => 
+                `<li id="w-${w}" class="word p-2 bg-white rounded-xl border border-gray-100 text-gray-600 font-semibold text-center shadow-sm transition-all">${w}</li>`
+            ).join('');
+        }
+
+        function onSelectStart(cell) {
+            game.isMouseDown = true;
+            game.selectedCells = [cell];
+            game.dragDirection = null;
+            cell.classList.add('selected');
+        }
+
+        function onSelectMove(cell) {
+            if (!game.isMouseDown || game.selectedCells.includes(cell)) return;
+            
+            const first = game.selectedCells[0];
+            const r1 = parseInt(first.dataset.r), c1 = parseInt(first.dataset.c);
+            const r2 = parseInt(cell.dataset.r), c2 = parseInt(cell.dataset.c);
+            
+            const dr = r2 - r1;
+            const dc = c2 - c1;
+
+            if (game.dragDirection === null) {
+                if (dr === 0 || dc === 0 || Math.abs(dr) === Math.abs(dc)) {
+                    game.dragDirection = [
+                        dr === 0 ? 0 : dr / Math.abs(dr),
+                        dc === 0 ? 0 : dc / Math.abs(dc)
+                    ];
+                } else return;
+            }
+
+            const checkDr = r2 - r1;
+            const checkDc = c2 - c1;
+            const isAtTrack = (
+                (game.dragDirection[0] === 0 && checkDr === 0 && checkDc * game.dragDirection[1] > 0) ||
+                (game.dragDirection[1] === 0 && checkDc === 0 && checkDr * game.dragDirection[0] > 0) ||
+                (game.dragDirection[0] !== 0 && game.dragDirection[1] !== 0 && 
+                 Math.abs(checkDr) === Math.abs(checkDc) && 
+                 checkDr * game.dragDirection[0] > 0 && 
+                 checkDc * game.dragDirection[1] > 0)
+            );
+
+            if (isAtTrack) {
+                game.selectedCells.forEach(c => c.classList.remove('selected'));
+                game.selectedCells = [];
+                const steps = Math.max(Math.abs(checkDr), Math.abs(checkDc));
+                for (let i = 0; i <= steps; i++) {
+                    const currR = r1 + i * game.dragDirection[0];
+                    const currC = c1 + i * game.dragDirection[1];
+                    const target = document.querySelector(`[data-r="${currR}"][data-c="${currC}"]`);
+                    if (target) {
+                        target.classList.add('selected');
+                        game.selectedCells.push(target);
+                    }
+                }
+            }
+        }
+
+        const handleEnd = () => {
+            if (!game.isMouseDown) return;
+            game.isMouseDown = false;
+            
+            const selectedStr = game.selectedCells.map(c => c.textContent).join('');
+            
+            if (game.currentWords.includes(selectedStr) && !game.foundWords.has(selectedStr)) {
+                game.foundWords.add(selectedStr);
+                game.selectedCells.forEach(c => {
+                    c.classList.remove('selected');
+                    c.classList.add('found');
+                });
+                document.getElementById(`w-${selectedStr}`).classList.add('found');
+                updateUI();
+                
+                if (game.foundWords.size === CONFIG.PICK_COUNT) {
+                    clearInterval(game.timer);
+                    setTimeout(showFinalModal, 500);
+                }
+            } else {
+                game.selectedCells.forEach(c => c.classList.remove('selected'));
+            }
+            game.selectedCells = [];
+            game.dragDirection = null;
+        };
+
+        window.onmouseup = handleEnd;
+        window.ontouchend = handleEnd;
+
+        function showFinalModal() {
+            const modal = document.getElementById('modal');
+            const desc = document.getElementById('modal-desc');
+            desc.innerHTML = `Selamat <b>${namaSelect.value}</b>, Anda berhasil menemukan <b>${game.foundWords.size}</b> kata dalam waktu <b>${document.getElementById('timer').textContent}</b>.`;
+            modal.classList.remove('hidden');
+        }
+
+        document.getElementById('shuffle-btn').onclick = buildGrid;
+        document.getElementById('submit-btn').onclick = () => {
+            clearInterval(game.timer);
+            showFinalModal();
+        };
+
+        loadAllData();
+    </script>
+</body>
+</html>
