@@ -169,8 +169,8 @@
     </div>
 
     <script>
-        // Link Web App Google Apps Script yang baru
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyLtEveIOj_uYjOFR-fLeX23DMXKD5zGo-M0bGJBT8aCNLZHwm48Baw7EsJ81k8DNlO/exec'; 
+        // Link Web App Google Apps Script terbaru Anda
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyn1xKLDE_9ICKoHt2RP6hEmfdevXyFfMupiULh9a-3oovS9dz-bRvHwF49n6ZeW-dC/exec'; 
 
         const DATA_URLS = {
             students: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4alJN5yHJz4sXVfvkSLYKRNwk0voqmkt0pWNWC8dVM2aFG8zGa39TMU-To7V1njhtRUWsLzn_2ud0/pub?gid=1397527120&single=true&output=csv',
@@ -466,14 +466,16 @@
             btnLoader.classList.remove('hidden');
 
             const payload = {
+                sheetName: "Hasil",
                 nama: namaSelect.value,
                 kelas: kelasSelect.value,
                 waktu: document.getElementById('timer').textContent,
-                skor: `${game.foundWords.size}/${CONFIG.PICK_COUNT}`
+                jumlahKata: `${game.foundWords.size}/${CONFIG.PICK_COUNT}`,
+                kataDicari: game.currentWords.join(", "),
+                kataBerhasil: Array.from(game.foundWords).join(", ")
             };
 
             try {
-                // Gunakan mode no-cors untuk interaksi lintas domain
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
