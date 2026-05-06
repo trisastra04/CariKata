@@ -80,8 +80,8 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0012 3m0 18a10.003 10.003 0 01-12-10V7a2 2 0 012-2h2m2 4h10a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6z" />
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-gray-800">Presensi Kuis</h1>
-            <p class="text-gray-500 mt-2">Silahkan verifikasi identitas Anda</p>
+            <h1 class="text-3xl font-bold text-gray-800">Kuis Cari Kata</h1>
+            <p class="text-gray-500 mt-2">Masukkan identitas untuk memulai kuis</p>
         </div>
         
         <div id="loading-data" class="text-center py-4 text-indigo-600 font-semibold animate-pulse">
@@ -133,12 +133,10 @@
         </div>
 
         <div class="flex flex-col lg:flex-row gap-8">
-            <!-- Grid Board -->
             <div class="flex-1 flex justify-center items-start">
                 <div id="grid-container" class="grid p-4 bg-white rounded-xl shadow-sm border border-gray-100 touch-none select-none" style="gap: 2px;"></div>
             </div>
 
-            <!-- Sidebar Info -->
             <div class="w-full lg:w-72 space-y-5">
                 <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100">
                     <div class="flex justify-between items-center mb-4">
@@ -150,10 +148,8 @@
                 
                 <div class="space-y-3">
                     <button id="submit-btn" disabled class="w-full bg-green-500 text-white py-4 rounded-xl font-bold opacity-50 cursor-not-allowed hover:bg-green-600 shadow-lg shadow-green-100 transition-all flex items-center justify-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Kirim Jawaban
+                        <span id="btn-text">Kirim Jawaban</span>
+                        <div id="btn-loader" class="hidden animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
                     </button>
                     <button id="shuffle-btn" class="w-full text-gray-400 py-2 text-xs hover:text-gray-600 transition-colors uppercase tracking-widest font-semibold">
                         Acak Ulang Posisi
@@ -163,7 +159,6 @@
         </div>
     </div>
 
-    <!-- Modal Status -->
     <div id="modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-md hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white p-10 rounded-3xl max-w-sm w-full text-center shadow-2xl">
             <div id="modal-icon" class="text-6xl mb-6">🎯</div>
@@ -174,6 +169,9 @@
     </div>
 
     <script>
+        // Link Web App Google Apps Script yang baru
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyLtEveIOj_uYjOFR-fLeX23DMXKD5zGo-M0bGJBT8aCNLZHwm48Baw7EsJ81k8DNlO/exec'; 
+
         const DATA_URLS = {
             students: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4alJN5yHJz4sXVfvkSLYKRNwk0voqmkt0pWNWC8dVM2aFG8zGa39TMU-To7V1njhtRUWsLzn_2ud0/pub?gid=1397527120&single=true&output=csv',
             codes: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4alJN5yHJz4sXVfvkSLYKRNwk0voqmkt0pWNWC8dVM2aFG8zGa39TMU-To7V1njhtRUWsLzn_2ud0/pub?gid=1570304066&single=true&output=csv',
@@ -182,26 +180,26 @@
 
         const CONFIG = {
             GRID_SIZE: 15,
-            PICK_COUNT: 10 // Jumlah kata yang akan dipilih acak untuk tiap murid
+            PICK_COUNT: 10
         };
 
         let db = { 
             students: {}, 
             codes: {}, 
-            allWords: [] // Penampung semua kata dari CSV
+            allWords: [] 
         };
 
         let game = {
             isMouseDown: false,
             selectedCells: [],
             foundWords: new Set(),
-            currentWords: [], // Kata yang terpilih untuk sesi ini
+            currentWords: [],
             seconds: 0,
             timer: null,
-            dragDirection: null
+            dragDirection: null,
+            isSubmitting: false
         };
 
-        // --- DATA LOAD ---
         async function loadAllData() {
             try {
                 const [studResp, codeResp, wordResp] = await Promise.all([
@@ -216,7 +214,7 @@
                 document.getElementById('login-form').classList.remove('hidden');
             } catch (err) {
                 console.error(err);
-                alert("Kesalahan sinkronisasi data. Pastikan spreadsheet dipublikasikan ke web.");
+                alert("Gagal memuat data. Periksa koneksi internet.");
             }
         }
 
@@ -236,14 +234,12 @@
         }
 
         function parseWords(csv) {
-            // Mengambil Kolom A (index 0) mulai baris 2
             const lines = csv.split('\n').map(line => line.split(','));
             db.allWords = lines.slice(1)
                 .map(row => row[0]?.trim().toUpperCase())
-                .filter(w => w && w.length > 2); // Filter kata kosong atau terlalu pendek
+                .filter(w => w && w.length >= 3);
         }
 
-        // --- LOGIN FLOW ---
         const kelasSelect = document.getElementById('kelas-select');
         const kodeInput = document.getElementById('kode-input');
         const namaSelect = document.getElementById('nama-select');
@@ -291,7 +287,6 @@
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('game-section').classList.remove('hidden');
             
-            // Pilih 10 kata acak dari database untuk murid ini
             game.currentWords = [...db.allWords]
                 .sort(() => 0.5 - Math.random())
                 .slice(0, CONFIG.PICK_COUNT);
@@ -299,7 +294,6 @@
             startGame();
         });
 
-        // --- CORE GAME ENGINE ---
         function startGame() {
             game.foundWords.clear();
             game.seconds = 0;
@@ -312,7 +306,7 @@
         function updateUI() {
             document.getElementById('progress-text').textContent = `${game.foundWords.size}/${CONFIG.PICK_COUNT}`;
             const btn = document.getElementById('submit-btn');
-            if (game.foundWords.size >= 5) {
+            if (game.foundWords.size >= 5 && !game.isSubmitting) {
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
@@ -331,13 +325,7 @@
         function buildGrid() {
             const size = CONFIG.GRID_SIZE;
             let board = Array(size).fill().map(() => Array(size).fill(''));
-            
-            const directions = [
-                [0, 1],   // Horizontal
-                [1, 0],   // Vertikal
-                [1, 1],   // Diagonal Bawah Kanan
-                [-1, 1]   // Diagonal Atas Kanan
-            ];
+            const directions = [[0, 1], [1, 0], [1, 1], [-1, 1]];
 
             game.currentWords.forEach(word => {
                 let placed = false;
@@ -346,7 +334,6 @@
                     const dir = directions[Math.floor(Math.random() * directions.length)];
                     const r = Math.floor(Math.random() * size);
                     const c = Math.floor(Math.random() * size);
-                    
                     const endR = r + (word.length - 1) * dir[0];
                     const endC = c + (word.length - 1) * dir[1];
 
@@ -356,11 +343,8 @@
                             const curr = board[r + i * dir[0]][c + i * dir[1]];
                             if (curr && curr !== word[i]) { canFit = false; break; }
                         }
-
                         if (canFit) {
-                            for (let i = 0; i < word.length; i++) {
-                                board[r + i * dir[0]][c + i * dir[1]] = word[i];
-                            }
+                            for (let i = 0; i < word.length; i++) board[r + i * dir[0]][c + i * dir[1]] = word[i];
                             placed = true;
                         }
                     }
@@ -381,10 +365,8 @@
                     cell.textContent = char;
                     cell.dataset.r = r;
                     cell.dataset.c = c;
-                    
                     cell.onmousedown = (e) => { e.preventDefault(); onSelectStart(cell); };
                     cell.onmouseenter = (e) => { if(game.isMouseDown) onSelectMove(cell); };
-                    
                     cell.ontouchstart = (e) => { e.preventDefault(); onSelectStart(cell); };
                     cell.ontouchmove = (e) => {
                         e.preventDefault();
@@ -392,7 +374,6 @@
                         const el = document.elementFromPoint(touch.clientX, touch.clientY);
                         if (el && el.classList.contains('grid-cell')) onSelectMove(el);
                     };
-
                     container.appendChild(cell);
                 }
             }
@@ -406,6 +387,7 @@
         }
 
         function onSelectStart(cell) {
+            if (game.isSubmitting) return;
             game.isMouseDown = true;
             game.selectedCells = [cell];
             game.dragDirection = null;
@@ -414,32 +396,22 @@
 
         function onSelectMove(cell) {
             if (!game.isMouseDown || game.selectedCells.includes(cell)) return;
-            
             const first = game.selectedCells[0];
             const r1 = parseInt(first.dataset.r), c1 = parseInt(first.dataset.c);
             const r2 = parseInt(cell.dataset.r), c2 = parseInt(cell.dataset.c);
-            
-            const dr = r2 - r1;
-            const dc = c2 - c1;
+            const dr = r2 - r1, dc = c2 - c1;
 
             if (game.dragDirection === null) {
                 if (dr === 0 || dc === 0 || Math.abs(dr) === Math.abs(dc)) {
-                    game.dragDirection = [
-                        dr === 0 ? 0 : dr / Math.abs(dr),
-                        dc === 0 ? 0 : dc / Math.abs(dc)
-                    ];
+                    game.dragDirection = [dr === 0 ? 0 : dr/Math.abs(dr), dc === 0 ? 0 : dc/Math.abs(dc)];
                 } else return;
             }
 
-            const checkDr = r2 - r1;
-            const checkDc = c2 - c1;
+            const checkDr = r2 - r1, checkDc = c2 - c1;
             const isAtTrack = (
                 (game.dragDirection[0] === 0 && checkDr === 0 && checkDc * game.dragDirection[1] > 0) ||
                 (game.dragDirection[1] === 0 && checkDc === 0 && checkDr * game.dragDirection[0] > 0) ||
-                (game.dragDirection[0] !== 0 && game.dragDirection[1] !== 0 && 
-                 Math.abs(checkDr) === Math.abs(checkDc) && 
-                 checkDr * game.dragDirection[0] > 0 && 
-                 checkDc * game.dragDirection[1] > 0)
+                (game.dragDirection[0] !== 0 && game.dragDirection[1] !== 0 && Math.abs(checkDr) === Math.abs(checkDc) && checkDr * game.dragDirection[0] > 0 && checkDc * game.dragDirection[1] > 0)
             );
 
             if (isAtTrack) {
@@ -447,13 +419,9 @@
                 game.selectedCells = [];
                 const steps = Math.max(Math.abs(checkDr), Math.abs(checkDc));
                 for (let i = 0; i <= steps; i++) {
-                    const currR = r1 + i * game.dragDirection[0];
-                    const currC = c1 + i * game.dragDirection[1];
+                    const currR = r1 + i * game.dragDirection[0], currC = c1 + i * game.dragDirection[1];
                     const target = document.querySelector(`[data-r="${currR}"][data-c="${currC}"]`);
-                    if (target) {
-                        target.classList.add('selected');
-                        game.selectedCells.push(target);
-                    }
+                    if (target) { target.classList.add('selected'); game.selectedCells.push(target); }
                 }
             }
         }
@@ -461,22 +429,19 @@
         const handleEnd = () => {
             if (!game.isMouseDown) return;
             game.isMouseDown = false;
-            
             const selectedStr = game.selectedCells.map(c => c.textContent).join('');
+            const reversedStr = [...selectedStr].reverse().join('');
             
-            if (game.currentWords.includes(selectedStr) && !game.foundWords.has(selectedStr)) {
-                game.foundWords.add(selectedStr);
-                game.selectedCells.forEach(c => {
-                    c.classList.remove('selected');
-                    c.classList.add('found');
-                });
-                document.getElementById(`w-${selectedStr}`).classList.add('found');
+            let foundMatch = null;
+            if (game.currentWords.includes(selectedStr) && !game.foundWords.has(selectedStr)) foundMatch = selectedStr;
+            else if (game.currentWords.includes(reversedStr) && !game.foundWords.has(reversedStr)) foundMatch = reversedStr;
+
+            if (foundMatch) {
+                game.foundWords.add(foundMatch);
+                game.selectedCells.forEach(c => { c.classList.remove('selected'); c.classList.add('found'); });
+                document.getElementById(`w-${foundMatch}`).classList.add('found');
                 updateUI();
-                
-                if (game.foundWords.size === CONFIG.PICK_COUNT) {
-                    clearInterval(game.timer);
-                    setTimeout(showFinalModal, 500);
-                }
+                if (game.foundWords.size === CONFIG.PICK_COUNT) submitToSheet();
             } else {
                 game.selectedCells.forEach(c => c.classList.remove('selected'));
             }
@@ -487,18 +452,60 @@
         window.onmouseup = handleEnd;
         window.ontouchend = handleEnd;
 
-        function showFinalModal() {
+        async function submitToSheet() {
+            if (game.isSubmitting) return;
+            game.isSubmitting = true;
+            clearInterval(game.timer);
+
+            const btn = document.getElementById('submit-btn');
+            const btnText = document.getElementById('btn-text');
+            const btnLoader = document.getElementById('btn-loader');
+
+            btn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+
+            const payload = {
+                nama: namaSelect.value,
+                kelas: kelasSelect.value,
+                waktu: document.getElementById('timer').textContent,
+                skor: `${game.foundWords.size}/${CONFIG.PICK_COUNT}`
+            };
+
+            try {
+                // Gunakan mode no-cors untuk interaksi lintas domain
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                showFinalModal(true);
+            } catch (err) {
+                console.error(err);
+                showFinalModal(false);
+            } finally {
+                game.isSubmitting = false;
+                btnText.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
+            }
+        }
+
+        function showFinalModal(isSuccess) {
             const modal = document.getElementById('modal');
             const desc = document.getElementById('modal-desc');
-            desc.innerHTML = `Selamat <b>${namaSelect.value}</b>, Anda berhasil menemukan <b>${game.foundWords.size}</b> kata dalam waktu <b>${document.getElementById('timer').textContent}</b>.`;
+            const status = isSuccess ? "✅ Jawaban Berhasil Terkirim" : "⚠️ Selesai (Cek Koneksi Internet)";
+            
+            desc.innerHTML = `
+                <div class="mb-4 font-bold text-indigo-600">${status}</div>
+                Selamat <b>${namaSelect.value}</b>, Anda berhasil menemukan <b>${game.foundWords.size}</b> kata dalam waktu <b>${document.getElementById('timer').textContent}</b>.
+            `;
             modal.classList.remove('hidden');
         }
 
-        document.getElementById('shuffle-btn').onclick = buildGrid;
-        document.getElementById('submit-btn').onclick = () => {
-            clearInterval(game.timer);
-            showFinalModal();
-        };
+        document.getElementById('shuffle-btn').onclick = () => { if(!game.isSubmitting) buildGrid(); };
+        document.getElementById('submit-btn').onclick = submitToSheet;
 
         loadAllData();
     </script>
