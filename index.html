@@ -22,7 +22,7 @@
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            font-size: 1.1rem; /* Ukuran huruf diperbesar kembali */
+            font-size: 1.1rem;
             font-weight: 700;
             text-transform: uppercase;
             transition: all 0.15s ease;
@@ -66,6 +66,14 @@
 
         .login-container { max-width: 450px; }
         select:disabled, input:disabled { background-color: #f9fafb; cursor: not-allowed; color: #9ca3af; }
+        
+        /* Gaya untuk tombol login yang non-aktif */
+        #start-game-btn:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
 
         @media (max-width: 768px) {
             .grid-cell { width: 20px; height: 20px; font-size: 0.75rem; }
@@ -116,7 +124,7 @@
                 </select>
             </div>
 
-            <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95">Mulai Pengerjaan</button>
+            <button type="submit" id="start-game-btn" disabled class="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95">Mulai Pengerjaan</button>
         </form>
     </div>
 
@@ -245,6 +253,21 @@
         const kodeInput = document.getElementById('kode-input');
         const namaSelect = document.getElementById('nama-select');
         const kodeMsg = document.getElementById('kode-msg');
+        const startBtn = document.getElementById('start-game-btn');
+
+        // Fungsi pengecekan validitas tombol start
+        function checkLoginValidity() {
+            const selectedClass = kelasSelect.value;
+            const enteredCode = kodeInput.value;
+            const selectedName = namaSelect.value;
+            
+            // Tombol hanya aktif jika kode benar DAN nama dipilih
+            if (selectedClass && enteredCode === db.codes[selectedClass] && selectedName !== "") {
+                startBtn.disabled = false;
+            } else {
+                startBtn.disabled = true;
+            }
+        }
 
         kelasSelect.addEventListener('change', () => {
             kodeInput.value = "";
@@ -255,6 +278,7 @@
                 kodeMsg.textContent = "Ketik kode akses " + kelasSelect.value;
                 kodeMsg.className = "text-xs mt-2 text-indigo-500 font-medium";
             }
+            checkLoginValidity();
         });
 
         kodeInput.addEventListener('input', () => {
@@ -272,13 +296,24 @@
                 });
             } else {
                 namaSelect.disabled = true;
+                namaSelect.value = "";
                 kodeMsg.textContent = "❌ Kode Salah";
                 kodeMsg.className = "text-xs mt-2 text-red-500 font-bold";
             }
+            checkLoginValidity();
         });
+
+        namaSelect.addEventListener('change', checkLoginValidity);
 
         document.getElementById('login-form').addEventListener('submit', (e) => {
             e.preventDefault();
+            
+            // Proteksi Tambahan: Verifikasi ulang di dalam event submit
+            const selectedClass = kelasSelect.value;
+            if (kodeInput.value !== db.codes[selectedClass] || namaSelect.value === "") {
+                return; // Batalkan jika data tidak valid
+            }
+
             document.getElementById('user-name').textContent = namaSelect.value;
             document.getElementById('user-class').textContent = "Kelas " + kelasSelect.value;
             document.getElementById('login-section').classList.add('hidden');
